@@ -69,7 +69,6 @@ class WP_User_Role_Switcher {
 	 * @param $admin_bar
 	 */
 	public function add_admin_bar_menu( $admin_bar ) {
-		$current_url = $_SERVER['REQUEST_SCHEME'].'://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
 
 		$admin_bar->add_menu( array(
 			'id'     => 'd9-role-switcher',
@@ -99,7 +98,7 @@ class WP_User_Role_Switcher {
 					add_query_arg( array(
 						'action' => 'role_switcher',
 						'role'   => $role,
-					), $current_url ),
+					) ),
 					sprintf( 'd9SwitchAs%s', $role ),
 					'nonce'
 				),
@@ -116,7 +115,7 @@ class WP_User_Role_Switcher {
 			'href'   => wp_nonce_url(
 				add_query_arg( array(
 					'action' => 'role_switch_back',
-				), $current_url ),
+				) ),
 				sprintf( 'd9SwitchBack' ),
 				'nonce'
 			),
@@ -189,7 +188,8 @@ class WP_User_Role_Switcher {
 	 * @param string $msg
 	 */
 	private function redirect_user( $msg ) {
-		$url = $_SERVER['REQUEST_SCHEME'].'://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
+		$url = ( ! empty( $_SERVER['REQUEST_SCHEME'] ) ) ? $_SERVER['REQUEST_SCHEME'] : 'http';
+		$url = $url . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 		$url = remove_query_arg( array( 'action', 'role', 'nonce' ), $url );
 		$url = add_query_arg( '_urs_action', $msg, $url );
 
@@ -215,7 +215,7 @@ class WP_User_Role_Switcher {
 	public function admin_success_notice() {
 		if ( is_admin() ) {
 			echo '<div class="notice notice-success is-dismissible">
-             <p>Your role has been changed. Please click `Switch Back` from the `Switch Role To` menu in the top admin bar.</p>
+             <p>Your role has been changed. Please click `Switch Back` from the `Switch Role To` menu in the top admin bar to switch back to your original role.</p>
          	</div>';
 		}
 	}
