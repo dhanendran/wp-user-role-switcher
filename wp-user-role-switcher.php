@@ -29,7 +29,13 @@ add_action( 'init', function() {
 	$wp_user_role_switcher = new WP_User_Role_Switcher();
 	$wp_user_role_switcher->init();
 
-	$wp_user_role_switcher->switch_role();
+	$action = filter_input( INPUT_GET, 'action', FILTER_SANITIZE_STRING );
+	$role   = filter_input( INPUT_GET, 'role', FILTER_SANITIZE_STRING );
+	$nonce  = filter_input( INPUT_GET, 'nonce', FILTER_SANITIZE_STRING );
+
+	if ( 'role_switcher' === $action || 'role_switch_back' === $action ) {
+		$wp_user_role_switcher->switch_role( $action, $role, $nonce );
+	}
 } );
 
 /**
@@ -129,11 +135,7 @@ class WP_User_Role_Switcher {
 	/**
 	 * Switch user role.
 	 */
-	public function switch_role() {
-		$action = filter_input( INPUT_GET, 'action', FILTER_SANITIZE_STRING );
-		$role   = filter_input( INPUT_GET, 'role', FILTER_SANITIZE_STRING );
-		$nonce  = filter_input( INPUT_GET, 'nonce', FILTER_SANITIZE_STRING );
-
+	public function switch_role( $action, $role, $nonce ) {
 		if ( 'role_switcher' !== $action && 'role_switch_back' !== $action ) {
 			return;
 		}
