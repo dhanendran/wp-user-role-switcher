@@ -9,7 +9,7 @@
  * Plugin Name:       WP User Role Switcher
  * Plugin URI:        https://github.com/dhanendran/wp-user-role-switcher
  * Description:       This plugin allows you to quickly swap between user roles in WordPress at the click of a button. You’ll be instantly switched to the new user role. This is handy for test environments where you regularly log out and in between different accounts, or for administrators who need to switch between multiple accounts to test the feature in different user roles.
- * Version:           0.1.0
+ * Version:           0.2.0
  * Author:            Dhanendran Rajagopal
  * Author URI:        https://dhanendranrajagopal.me
  * License:           GPL-3.0+
