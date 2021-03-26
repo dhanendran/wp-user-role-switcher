@@ -51,6 +51,11 @@ class WP_User_Role_Switcher {
 			wp_enqueue_style( 'd9urs-styles', plugin_dir_url( __FILE__ ) . 'style.css', array(), '0.1' );
 		}
 
+		if ( get_user_meta( get_current_user_id(), '_d9urs_role_switched', true ) ) {
+			add_action( 'wp_footer', array( $this, 'add_floating_button' ) );
+			add_action( 'admin_footer', array( $this, 'add_floating_button' ) );
+		}
+
 		if ( ! function_exists( 'get_editable_roles' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/user.php';
 		}
@@ -86,28 +91,14 @@ class WP_User_Role_Switcher {
 			),
 		));
 
-		$all_roles = array_keys( get_editable_roles() );
-		$curr_user = wp_get_current_user();
-		$roles     = array_diff( $all_roles, $curr_user->roles );
+		$roles = $this->get_switchable_roles();
 
-		$orig_roles = get_user_meta( get_current_user_id(), '_d9urs_original_user_role', true );
-		if ( ! empty( $orig_roles ) ) {
-			$roles = array_values( array_diff( $roles, $orig_roles ) );
-		}
-
-		foreach ( $roles as $role ) {
+		foreach ( $roles as $role => $url ) {
 			$admin_bar->add_menu( array(
 				'id'     => sprintf( 'role_%s', $role ),
 				'parent' => 'd9-role-switcher',
 				'title'  => __( ucfirst( $role ), 'd9urs' ),
-				'href'   => wp_nonce_url(
-					add_query_arg( array(
-						'action' => 'role_switcher',
-						'role'   => $role,
-					) ),
-					sprintf( 'd9SwitchAs%s', $role ),
-					'nonce'
-				),
+				'href'   => $url,
 				'meta'   => array(
 					'title'  => __( ucfirst( $role ), 'd9urs' ),
 				),
@@ -118,18 +109,92 @@ class WP_User_Role_Switcher {
 			'id'     => 'd9-role-switcher-back',
 			'parent' => 'd9-role-switcher',
 			'title'  => 'Switch Back',
-			'href'   => wp_nonce_url(
-				add_query_arg( array(
-					'action' => 'role_switch_back',
-				) ),
-				sprintf( 'd9SwitchBack' ),
-				'nonce'
-			),
+			'href'   => $this->get_switch_back_link(),
 			'meta'   => array(
 				'title' => __( 'Switch Back', 'd9urs' ),
 				'class' => 'd9-switch-back'
 			),
 		));
+	}
+
+	/**
+	 * Get switchable roles.
+	 *
+	 * @return array
+	 */
+	private function get_switchable_roles() {
+		$all_roles = array_keys( get_editable_roles() );
+		$curr_user = wp_get_current_user();
+		$all_roles     = array_diff( $all_roles, $curr_user->roles );
+
+		$orig_roles = get_user_meta( get_current_user_id(), '_d9urs_original_user_role', true );
+		if ( ! empty( $orig_roles ) ) {
+			$all_roles = array_values( array_diff( $all_roles, $orig_roles ) );
+		}
+
+		$roles = [];
+		foreach ( $all_roles as $role ) {
+			$roles[ $role ] = wp_nonce_url(
+						add_query_arg( array(
+							'action' => 'role_switcher',
+							'role'   => $role,
+						) ),
+						sprintf( 'd9SwitchAs%s', $role ),
+						'nonce'
+					);
+		}
+
+		return $roles;
+	}
+
+	/**
+	 * Get the `Switch Back` link.
+	 *
+	 * @return string
+	 */
+	private function get_switch_back_link() {
+		return wp_nonce_url(
+				add_query_arg( array(
+					'action' => 'role_switch_back',
+				) ),
+				sprintf( 'd9SwitchBack' ),
+				'nonce'
+			);
+	}
+
+	/**
+	 * Adds floating action button.
+	 *
+	 * @return void
+	 */
+	public function add_floating_button() {
+		?>
+		<div class="fab-container">
+			<div class="fab fab-icon-holder">
+				<i class="fab-urs-icon"></i>
+			</div>
+			<ul class="fab-options">
+				<?php $i = 1; foreach( $this->get_switchable_roles() as $role => $url ) : ?>
+				<li>
+					<a class="fab-link" href="<?php echo $url; ?>">
+						<span class="fab-label"><?php echo ucfirst( $role ); ?></span>
+						<div class="fab-icon-holder">
+							<i><?php echo $i++; ?></i>
+						</div>
+					</a>
+				</li>
+				<?php endforeach; ?>
+				<li>
+					<a class="fab-link" href="<?php echo $this->get_switch_back_link(); ?>">
+						<span class="fab-label">Switch Back</span>
+						<div class="fab-icon-holder">
+							<i class="dashicons-before dashicons-undo"></i>
+						</div>
+					</a>
+				</li>
+			</ul>
+		</div>
+		<?php
 	}
 
 	/**
@@ -205,7 +270,7 @@ class WP_User_Role_Switcher {
 	 */
 	public function admin_error_notice() {
 		if ( is_admin() ) {
-			echo '<div class="notice notice-warning is-dismissible">
+			echo '<div class="d9urs notice notice-warning is-dismissible">
              <p>There are some issues while switching the user role. Please try again.</p>
          	</div>';
 		}
@@ -216,7 +281,7 @@ class WP_User_Role_Switcher {
 	 */
 	public function admin_success_notice() {
 		if ( is_admin() ) {
-			echo '<div class="notice notice-success is-dismissible">
+			echo '<div class="d9urs notice notice-success is-dismissible">
              <p>Your role has been changed. Please click `Switch Back` from the `Switch Role To` menu in the top admin bar to switch back to your original role.</p>
          	</div>';
 		}
@@ -227,7 +292,7 @@ class WP_User_Role_Switcher {
 	 */
 	public function admin_switch_back_notice() {
 		if ( is_admin() ) {
-			echo '<div class="notice notice-success is-dismissible">
+			echo '<div class="d9urs notice notice-success is-dismissible">
              <p>Role has been switched back to your original role.</p>
          	</div>';
 		}
