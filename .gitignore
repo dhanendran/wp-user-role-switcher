@@ -8,3 +8,4 @@
 /tests/.env
 
 .DS_Store
+/wordpress.org
