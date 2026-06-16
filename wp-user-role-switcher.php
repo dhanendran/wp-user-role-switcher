@@ -9,7 +9,7 @@
  * Plugin Name:       WP User Role Switcher
  * Plugin URI:        https://github.com/dhanendran/wp-user-role-switcher
  * Description:       This plugin allows you to quickly swap between user roles in WordPress at the click of a button. You’ll be instantly switched to the new user role. This is handy for test environments where you regularly log out and in between different accounts, or for administrators who need to switch between multiple accounts to test the feature in different user roles.
- * Version:           0.2.0
+ * Version:           0.2.3
  * Author:            Dhanendran Rajagopal
  * Author URI:        https://dhanendranrajagopal.me
  * License:           GPL-3.0+
@@ -29,9 +29,9 @@ add_action( 'init', function() {
 	$wp_user_role_switcher = new WP_User_Role_Switcher();
 	$wp_user_role_switcher->init();
 
-	$action = filter_input( INPUT_GET, 'action', FILTER_SANITIZE_STRING );
-	$role   = filter_input( INPUT_GET, 'role', FILTER_SANITIZE_STRING );
-	$nonce  = filter_input( INPUT_GET, 'nonce', FILTER_SANITIZE_STRING );
+	$action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : '';
+	$role   = isset( $_GET['role'] ) ? sanitize_key( wp_unslash( $_GET['role'] ) ) : '';
+	$nonce  = isset( $_GET['nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['nonce'] ) ) : '';
 
 	if ( 'role_switcher' === $action || 'role_switch_back' === $action ) {
 		$wp_user_role_switcher->switch_role( $action, $role, $nonce );
@@ -61,7 +61,7 @@ class WP_User_Role_Switcher {
 		}
 
 		if ( isset( $_GET['_urs_action'] ) ) {
-			switch ( $_GET['_urs_action'] ) {
+			switch ( sanitize_key( wp_unslash( $_GET['_urs_action'] ) ) ) {
 				case 'switch_back':
 					add_action( 'admin_notices', array( $this, 'admin_switch_back_notice' ) );
 					break;
@@ -97,10 +97,10 @@ class WP_User_Role_Switcher {
 			$admin_bar->add_menu( array(
 				'id'     => sprintf( 'role_%s', $role ),
 				'parent' => 'd9-role-switcher',
-				'title'  => __( ucfirst( $role ), 'd9urs' ),
-				'href'   => $url,
+				'title'  => esc_html( ucfirst( $role ) ),
+				'href'   => esc_url( $url ),
 				'meta'   => array(
-					'title'  => __( ucfirst( $role ), 'd9urs' ),
+					'title'  => esc_attr( ucfirst( $role ) ),
 				),
 			));
 		}
@@ -176,16 +176,16 @@ class WP_User_Role_Switcher {
 			<ul class="fab-options">
 				<?php $i = 1; foreach( $this->get_switchable_roles() as $role => $url ) : ?>
 				<li>
-					<a class="fab-link" href="<?php echo $url; ?>">
-						<span class="fab-label"><?php echo ucfirst( $role ); ?></span>
+					<a class="fab-link" href="<?php echo esc_url( $url ); ?>">
+						<span class="fab-label"><?php echo esc_html( ucfirst( $role ) ); ?></span>
 						<div class="fab-icon-holder">
-							<i><?php echo $i++; ?></i>
+							<i><?php echo (int) $i++; ?></i>
 						</div>
 					</a>
 				</li>
 				<?php endforeach; ?>
 				<li>
-					<a class="fab-link" href="<?php echo $this->get_switch_back_link(); ?>">
+					<a class="fab-link" href="<?php echo esc_url( $this->get_switch_back_link() ); ?>">
 						<span class="fab-label">Switch Back</span>
 						<div class="fab-icon-holder">
 							<i class="dashicons-before dashicons-undo"></i>
@@ -198,6 +198,19 @@ class WP_User_Role_Switcher {
 	}
 
 	/**
+	 * Whether the current user is allowed to switch roles.
+	 *
+	 * Administrators may switch. A user who has already switched (and may
+	 * therefore be in a lowered role) is allowed to switch back.
+	 *
+	 * @return bool
+	 */
+	private function can_switch_roles() {
+		return current_user_can( 'manage_options' )
+			|| (bool) get_user_meta( get_current_user_id(), '_d9urs_role_switched', true );
+	}
+
+	/**
 	 * Switch user role.
 	 */
 	public function switch_role( $action, $role, $nonce ) {
@@ -205,9 +218,21 @@ class WP_User_Role_Switcher {
 			return;
 		}
 
+		// Capability check: only admins (or an already-switched user) may proceed.
+		if ( ! is_user_logged_in() || ! $this->can_switch_roles() ) {
+			$this->redirect_user( 'error' );
+			return;
+		}
+
 		$curr_user  = wp_get_current_user();
 		$curr_roles = $curr_user->roles;
 		if ( 'role_switch_back' === $action ) {
+			// Verify the switch-back nonce before changing any roles.
+			if ( ! wp_verify_nonce( $nonce, 'd9SwitchBack' ) ) {
+				$this->redirect_user( 'error' );
+				return;
+			}
+
 			// Remove all current roles from user.
 			foreach ( $curr_roles as $curr_role ) {
 				$curr_user->remove_role( $curr_role );
@@ -226,7 +251,7 @@ class WP_User_Role_Switcher {
 
 		$all_roles = array_keys( get_editable_roles() );
 
-		if ( ! wp_verify_nonce( $nonce, sprintf( 'd9SwitchAs%s', $role ) ) || ! in_array( $role, $all_roles ) ) {
+		if ( ! wp_verify_nonce( $nonce, sprintf( 'd9SwitchAs%s', $role ) ) || ! in_array( $role, $all_roles, true ) ) {
 			$this->redirect_user( 'error' );
 			return;
 		}
@@ -255,13 +280,14 @@ class WP_User_Role_Switcher {
 	 * @param string $msg
 	 */
 	private function redirect_user( $msg ) {
-		$url = ( ! empty( $_SERVER['REQUEST_SCHEME'] ) ) ? $_SERVER['REQUEST_SCHEME'] : 'http';
-		$url = $url . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-		$url = remove_query_arg( array( 'action', 'role', 'nonce' ), $url );
-		$url = add_query_arg( '_urs_action', $msg, $url );
+		// Build the redirect from the request path only (never trust HTTP_HOST),
+		// and force a local, safe redirect.
+		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+		$url         = remove_query_arg( array( 'action', 'role', 'nonce' ), $request_uri );
+		$url         = add_query_arg( '_urs_action', $msg, $url );
 
-		if ( wp_redirect( $url ) ) {
-			die;
+		if ( wp_safe_redirect( $url ) ) {
+			exit;
 		}
 	}
 
