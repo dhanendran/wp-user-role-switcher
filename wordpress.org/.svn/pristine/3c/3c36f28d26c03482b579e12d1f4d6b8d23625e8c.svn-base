@@ -3,9 +3,9 @@
 Contributors: dhanendran
 Tags: users, profiles, admin role, role, user role switching, fast user role switching, multisite, user management, developer, testing
 Requires at least: 3.7
-Tested up to: 7.0
-Stable tag: 0.2.3
-Requires PHP: 7.4
+Tested up to: 5.6.2
+Stable tag: 0.2.1
+Requires PHP: 6.2.2
 License: GPL v3 or later
 License URI: <a href="http://www.gnu.org/licenses/gpl-3.0.html">http://www.gnu.org/licenses/gpl-3.0.html</a>
 
@@ -33,14 +33,6 @@ This plugin allows you to quickly swap between user roles in WordPress at the cl
  4. You can switch back to your originating user role via the *Switch back* link on the top admin bar.
 
 == Changelog ==
-
-= 0.2.3 =
-
-* [Security] Added a capability check to the role-switch handler so only administrators (or an already-switched user switching back) can switch roles.
-* [Security] The "Switch Back" action now verifies its nonce before changing any roles.
-* [Security] Escaped role-switch URLs and labels in the admin bar and floating button output.
-* [Security] Hardened the post-switch redirect to a safe, local URL (no longer trusts the host header).
-* [Fix] Replaced the deprecated `FILTER_SANITIZE_STRING` with core sanitization for PHP 8.1+ compatibility.
 
 = 0.2.0 =
 
