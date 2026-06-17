@@ -1,7 +1,7 @@
 === User Role Switcher ===
 
 Contributors: dhanendran
-Tags: users, profiles, admin role, role, user role switching, fast user role switching, multisite, user management, developer, testing
+Tags: user roles, role switcher, switch user, user management, testing
 Requires at least: 3.7
 Tested up to: 7.0
 Stable tag: 0.2.3
