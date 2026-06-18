@@ -9,7 +9,7 @@
  * Plugin Name:       WP User Role Switcher
  * Plugin URI:        https://github.com/dhanendran/wp-user-role-switcher
  * Description:       This plugin allows you to quickly swap between user roles in WordPress at the click of a button. You’ll be instantly switched to the new user role. This is handy for test environments where you regularly log out and in between different accounts, or for administrators who need to switch between multiple accounts to test the feature in different user roles.
- * Version:           0.2.3
+ * Version:           0.2.4
  * Author:            Dhanendran Rajagopal
  * Author URI:        https://dhanendranrajagopal.me
  * License:           GPL-3.0+
@@ -46,7 +46,7 @@ class WP_User_Role_Switcher {
 	 * Adds the required hooks into WP Core.
 	 */
 	public function init() {
-		if ( current_user_can( 'manage_options' ) || get_user_meta( get_current_user_id(), '_d9urs_role_switched', true ) ) {
+		if ( current_user_can( 'promote_users' ) || get_user_meta( get_current_user_id(), '_d9urs_role_switched', true ) ) {
 			add_action( 'admin_bar_menu', array( $this, 'add_admin_bar_menu' ), 100 );
 			wp_enqueue_style( 'd9urs-styles', plugin_dir_url( __FILE__ ) . 'style.css', array(), '0.1' );
 		}
@@ -200,13 +200,20 @@ class WP_User_Role_Switcher {
 	/**
 	 * Whether the current user is allowed to switch roles.
 	 *
-	 * Administrators may switch. A user who has already switched (and may
-	 * therefore be in a lowered role) is allowed to switch back.
+	 * Requires `promote_users` — the capability WordPress uses to change a
+	 * user's role (administrators / super admins by default). `manage_options`
+	 * is deliberately NOT accepted: a lower-trust custom role granted only
+	 * `manage_options` must not be able to self-assign a higher role.
+	 *
+	 * The second clause lets a user who has already switched (and may now be in
+	 * a lowered role without `promote_users`) switch back. This is safe because
+	 * the switched flag can only be set by first passing the `promote_users`
+	 * check, so a user who never had that capability can never reach it.
 	 *
 	 * @return bool
 	 */
 	private function can_switch_roles() {
-		return current_user_can( 'manage_options' )
+		return current_user_can( 'promote_users' )
 			|| (bool) get_user_meta( get_current_user_id(), '_d9urs_role_switched', true );
 	}
 
